@@ -1,7 +1,7 @@
 const express = require('express')
 const app=express()
 require('dotenv').config()
-
+const sendEmailInternal = require('./util/emailService')
 const connectDB = require('./db/connect')
 
 app.use(express.urlencoded({extended:false/true}))
