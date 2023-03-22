@@ -1,6 +1,6 @@
 const nodemailer = require('nodemailer')
 
-const sendEmailInternal = async function(from,to,subject,text){
+const sendEmail = async function(to,subject,text){
     let transporter = await nodemailer.createTransport({
         service:process.env.NODEMAILER_SERVICE,
         auth:{
@@ -18,5 +18,5 @@ const sendEmailInternal = async function(from,to,subject,text){
     })
 }
 
-module.exports = sendEmailInternal
+module.exports = sendEmail
 

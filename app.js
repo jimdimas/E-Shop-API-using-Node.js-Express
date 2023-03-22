@@ -1,10 +1,13 @@
 const express = require('express')
 const app=express()
 require('dotenv').config()
-const sendEmailInternal = require('./util/emailService')
+const authRouter = require('./routes/authRouter')
 const connectDB = require('./db/connect')
 
+app.use(express.json())
 app.use(express.urlencoded({extended:false/true}))
+app.use('/api/auth',authRouter)
+
 
 const start = async()=>{
     try{
