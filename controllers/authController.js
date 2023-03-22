@@ -1,5 +1,6 @@
 const crypto = require('crypto')
 const sendVerificationEmail = require('../util/sendVerificationEmail')
+const sendPasswordResetEmail = require('../util/sendPasswordResetEmail')
 const User = require('../models/User')
 
 const register = async(req,res)=>{
@@ -38,7 +39,7 @@ const login = async(req,res)=>{
         return res.status(400).json({msg:"Failed to login,invalid credentials."})
     }
 
-    const passwordMatch = user.comparePassword(password)
+    const passwordMatch = await user.comparePassword(password)
 
     if (!passwordMatch){
         return res.status(400).json({msg:"Failed to login,invalid credentials."})
@@ -69,4 +70,41 @@ const verifyEmail = async(req,res)=>{
     res.status(200).json({msg:"Email verified succesfully"})
 }
 
-module.exports = {login,register,verifyEmail}
+const forgotPassword = async(req,res)=>{
+    const {email} = req.body
+
+    let user = await User.findOne({email})
+
+    if (!user){
+        return res.status(400).json({msg:"Invalid email provided"})
+    }
+    
+    const thirtyMinutes = 30*60*1000;
+    passwordToken = await crypto.randomBytes(32).toString('hex')
+    user.passwordTokenExpirationDate = Date.now()+thirtyMinutes;
+    user.passwordToken = passwordToken
+    await sendPasswordResetEmail(process.env.ORIGIN,user.firstName,email,passwordToken)
+    await user.save()
+    res.status(200).json({msg:"Password reset email has been sent"})
+}
+
+const resetPassword = async(req,res)=>{
+    const {email,password,token} = req.body 
+
+    let user = await User.findOne({email})
+
+    if (!user){
+        return res.status(400).json({msg:"Invalid data provided"})
+    }
+
+    if (user.passwordToken!=token || user.passwordTokenExpirationDate<Date.now()){
+        return res.status(400).json({msg:"Invalid token provided"})
+    }
+
+    user.password=password 
+    user.passwordToken=null 
+    user.passwordTokenExpirationDate=null 
+    await user.save()
+    res.status(200).json({msg:"Password changed succesfully"})
+}
+module.exports = {login,register,verifyEmail,forgotPassword,resetPassword}
