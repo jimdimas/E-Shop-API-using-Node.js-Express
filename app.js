@@ -1,4 +1,5 @@
 const express = require('express')
+const cookieParser = require('cookie-parser')
 const app=express()
 require('dotenv').config()
 const authRouter = require('./routes/authRouter')
@@ -6,6 +7,7 @@ const connectDB = require('./db/connect')
 
 app.use(express.json())
 app.use(express.urlencoded({extended:false/true}))
+app.use(cookieParser(process.env.TOKEN_SECRET))
 app.use('/api/auth',authRouter)
 
 

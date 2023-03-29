@@ -1,7 +1,9 @@
 const crypto = require('crypto')
 const sendVerificationEmail = require('../util/sendVerificationEmail')
 const sendPasswordResetEmail = require('../util/sendPasswordResetEmail')
+const {createAuthCookies} = require('../util/tokenService')
 const User = require('../models/User')
+const Token = require('../models/Token')
 
 const register = async(req,res)=>{
     const {email,password,firstName,lastName} = req.body 
@@ -45,6 +47,30 @@ const login = async(req,res)=>{
         return res.status(400).json({msg:"Failed to login,invalid credentials."})
     }
 
+    const token = await Token.findOne({user:user._id})
+    const userToken = {
+        userId:user._id,
+        name:user.firstName,
+        role:user.role
+    }
+    let refreshToken
+    if (token){
+        if (!token.valid){
+            return res.status(400).json({msg:"Failed to login"})
+        }
+        refreshToken=token.refreshToken
+        createAuthCookies(res,userToken,refreshToken)
+        return res.status(200).json({msg:"Successfull login"})
+    }
+
+    refreshToken = await crypto.randomBytes(32).toString('hex')
+    const newToken = {
+        user:user._id,
+        refreshToken:refreshToken,
+        ip:req.ip
+    }
+    await Token.create(newToken)
+    createAuthCookies(res,userToken,refreshToken)
     res.status(200).json({msg:"Succesfull login."})
 }
 
@@ -107,4 +133,12 @@ const resetPassword = async(req,res)=>{
     await user.save()
     res.status(200).json({msg:"Password changed succesfully"})
 }
-module.exports = {login,register,verifyEmail,forgotPassword,resetPassword}
+
+const logout = async(req,res)=>{
+    await Token.findOneAndDelete({refreshToken:req.refreshToken})
+    res.clearCookie('accessToken')
+    res.clearCookie('refreshToken')
+    res.status(200).json({msg:"Succesfull logout"})
+}
+
+module.exports = {login,register,verifyEmail,forgotPassword,resetPassword,logout}
