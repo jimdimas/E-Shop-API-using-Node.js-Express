@@ -2,9 +2,10 @@ const express = require('express')
 const cookieParser = require('cookie-parser')
 const app=express()
 require('dotenv').config()
+require('express-async-errors')
 const authRouter = require('./routes/authRouter')
 const connectDB = require('./db/connect')
-
+const errorHandlerMiddleware = require('./middleware/errorHandler')
 app.use(express.json())
 app.use(express.urlencoded({extended:false/true}))
 app.use(cookieParser(process.env.TOKEN_SECRET))
@@ -22,4 +23,5 @@ const start = async()=>{
     }
 }
 
+app.use(errorHandlerMiddleware)
 start()

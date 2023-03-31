@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken')
 const Token = require('../models/Token')
 const {createAuthCookies} = require('../util/tokenService')
+const {UnauthorizedError} = require('../util/errors')
+    
 const authenticationMiddleware = async (req,res,next)=>{
     try{
         const {accessToken,refreshToken} = req.signedCookies 
@@ -18,7 +20,7 @@ const authenticationMiddleware = async (req,res,next)=>{
         })
 
         if (!dbToken || !dbToken?.valid){
-            return res.status(401).json({msg:"Unauthorized"})
+            throw new UnauthorizedError('Unauthorized to access this route')
         }
 
         createAuthCookies(res,refreshTokenDecoded.user,refreshTokenDecoded.refreshToken)
@@ -26,7 +28,7 @@ const authenticationMiddleware = async (req,res,next)=>{
         next()
         
     } catch(err){
-        return res.status(401).json({msg:"Unauthorized"})
+        throw new UnauthorizedError('Unauthorized to access this route')
     }
 }
 

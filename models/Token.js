@@ -13,7 +13,6 @@ const TokenSchema = new mongoose.Schema({
     },
     ip:{
         type:String,
-        unique:true,
         required:[true,'Please provide ip address']
     },
     valid:{

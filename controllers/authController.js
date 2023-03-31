@@ -4,13 +4,17 @@ const sendPasswordResetEmail = require('../util/sendPasswordResetEmail')
 const {createAuthCookies} = require('../util/tokenService')
 const User = require('../models/User')
 const Token = require('../models/Token')
+const {BadRequestError,
+    UnauthenticatedError,
+    UnauthorizedError,
+    NotFoundError} = require('../util/errors')
 
 const register = async(req,res)=>{
     const {email,password,firstName,lastName} = req.body 
     let user = await User.findOne({email:email}) 
 
     if (user){
-        return res.status(400).json({msg:"Failed to register,email already in use"})
+        throw new BadRequestError('Email already in use')
     }
     role='user'
     if (email==process.env.ADMIN_EMAIL){
@@ -35,16 +39,23 @@ const register = async(req,res)=>{
 const login = async(req,res)=>{
     const {email,password}=req.body 
 
+    if (!email || !password){
+        throw new BadRequestError('Please provide email and password')
+    }
     const user = await User.findOne({email:email})
 
     if (!user){
-        return res.status(400).json({msg:"Failed to login,invalid credentials."})
+        throw new UnauthenticatedError('Invalid credentials provided')
     }
 
     const passwordMatch = await user.comparePassword(password)
 
     if (!passwordMatch){
-        return res.status(400).json({msg:"Failed to login,invalid credentials."})
+        throw new UnauthenticatedError('Invalid credentials provided')
+    }
+
+    if (!user.isVerified){
+        throw new UnauthenticatedError('Please verify email first in order to login')
     }
 
     const token = await Token.findOne({user:user._id})
@@ -56,7 +67,7 @@ const login = async(req,res)=>{
     let refreshToken
     if (token){
         if (!token.valid){
-            return res.status(400).json({msg:"Failed to login"})
+            throw new UnauthenticatedError('Invalid credentials provided')
         }
         refreshToken=token.refreshToken
         createAuthCookies(res,userToken,refreshToken)
@@ -81,11 +92,11 @@ const verifyEmail = async(req,res)=>{
     const user = await User.findOne({email})
 
     if (!user){
-        return res.status(400).json({msg:"Wrong email"})
+        throw new NotFoundError('Invalid email provided')
     }
 
     if (user.verificationToken!=token){
-        return res.status(400).json({msg:"Invalid token"})
+        throw new UnauthenticatedError('Invalid token provided')
     }
 
     user.verificationToken=null
@@ -102,7 +113,7 @@ const forgotPassword = async(req,res)=>{
     let user = await User.findOne({email})
 
     if (!user){
-        return res.status(400).json({msg:"Invalid email provided"})
+        throw new NotFoundError(`No user with ${email} exists`)
     }
     
     const thirtyMinutes = 30*60*1000;
@@ -120,11 +131,14 @@ const resetPassword = async(req,res)=>{
     let user = await User.findOne({email})
 
     if (!user){
-        return res.status(400).json({msg:"Invalid data provided"})
+        throw new NotFoundError('Invalid email provided')
     }
 
+    if (!user.passwordToken){
+        throw new BadRequestError('No request to reset password found')
+    }
     if (user.passwordToken!=token || user.passwordTokenExpirationDate<Date.now()){
-        return res.status(400).json({msg:"Invalid token provided"})
+        throw new UnauthenticatedError('Invalid token provided')
     }
 
     user.password=password 
