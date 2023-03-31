@@ -24,4 +24,7 @@ const start = async()=>{
 }
 
 app.use(errorHandlerMiddleware)
+app.use((req,res)=>{
+    res.status(404).json({msg:"Route not found"})
+})
 start()
